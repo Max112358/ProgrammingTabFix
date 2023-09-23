@@ -4,7 +4,9 @@ SendMode Input  ; Recommended for new scripts due to its superior speed and reli
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
 
-
+; The purpose of this script is to instantly fix any indentation errors in a program. 
+; It uses curly braces to move in one indentation level every time scope changes
+; Its meant for C based languages, so python or something it wont work.
 
 #r::Reload ; windows+r to reload script
 
