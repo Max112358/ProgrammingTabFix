@@ -3,6 +3,7 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
+global extraClipboardCopy := ""
 
 ; The purpose of this script is to instantly fix any indentation errors in a program. 
 ; It uses curly braces to move in one indentation level every time scope changes
@@ -23,7 +24,7 @@ Return
 determineLanguage()
 Return
 
-#c::  ;windows+c to apply or remove comments
+#g::  ;windows+g to apply or remove comments
 localComments()
 Return
 
@@ -35,15 +36,16 @@ Return
 fixPython()
 Return
 
+#c::  ;windows+c to copy something extra
+extraCopy()
+Return
 
-
-
-
+#v::  ;windows+v to paste something extra
+extraPaste()
 Return
 
 
-
-
+Return
 
 
 
@@ -386,3 +388,56 @@ localComments() ; this is the main function
 	Return
 }
 
+
+
+
+
+extraCopy() ; store an extra clipboard
+{
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	Send ^c ; cut all text
+	ClipWait  ; Wait for the clipboard to contain text.
+	clipboard := ClipboardAll ; Get the clipboard content
+	
+	extraClipboardCopy := clipboard
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := originalClipboard
+	}
+	
+	Return
+}
+
+
+
+extraPaste() ; paste the extra clipboard
+{
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := extraClipboardCopy
+	}
+	
+	Send ^v ; paste all text
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := originalClipboard
+	}
+	
+	Return
+}
