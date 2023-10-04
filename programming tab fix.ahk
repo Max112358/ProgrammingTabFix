@@ -3,6 +3,7 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
+global extraClipboardCopy := ""
 
 ; The purpose of this script is to instantly fix any indentation errors in a program. 
 ; It uses curly braces to move in one indentation level every time scope changes
@@ -23,7 +24,11 @@ Return
 determineLanguage()
 Return
 
-#c::  ;windows+f to indent with tabs
+#g::  ;windows+g to apply or remove comments
+localComments()
+Return
+
+#l::  ;windows+l to fix c based language
 fixTabs()
 Return
 
@@ -31,15 +36,16 @@ Return
 fixPython()
 Return
 
+#c::  ;windows+c to copy something extra
+extraCopy()
+Return
 
-
-
-
+#v::  ;windows+v to paste something extra
+extraPaste()
 Return
 
 
-
-
+Return
 
 
 
@@ -306,3 +312,132 @@ fixPython() ; this is the main function
 	Return
 }
 
+
+
+
+
+
+
+localComments() ; this is the main function
+{
+	
+	
+	
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	Send ^c ; cut all text
+	ClipWait  ; Wait for the clipboard to contain text.
+	clipboard := ClipboardAll ; Get the clipboard content
+	
+	isAComment := False
+	FirstTwoChars := SubStr(Clipboard, 1, 2)
+	if (FirstTwoChars = "//")
+	{
+		isAComment := True
+	}
+	else
+	{
+		isAComment := False
+	}
+	
+	
+	; Set the delimiter for splitting lines
+	LineDelimiter := "`n" ; Use `r`n for Windows line endings
+
+	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
+	
+	currentLine := 1
+	for index, line in Lines ; Loop through each line
+	{
+		
+	; Insert slashes at the beginning of the string
+	if(isAComment){
+		Lines[currentLine] := SubStr(Lines[currentLine], 3)
+	}
+	else{
+		Lines[currentLine] := "//" . Lines[currentLine]
+	}
+	
+		
+		
+	currentLine++
+	
+	joinedClipboard := ""
+	for joinIndex, line in Lines ; Loop through each line
+	{
+		joinedClipboard := joinedClipboard . line . "`n"
+	}
+	; Set the modified content back to the clipboard
+	clipboard := joinedClipboard
+		
+	} ; end of loop
+	
+	
+	Clipboard := SubStr(Clipboard, 1, -1) ; Remove the trailing newline character
+	
+	Send ^v ; paste from clipboard
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := originalClipboard
+	}
+	
+	Return
+}
+
+
+
+
+
+extraCopy() ; store an extra clipboard
+{
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	Send ^c ; cut all text
+	ClipWait  ; Wait for the clipboard to contain text.
+	clipboard := ClipboardAll ; Get the clipboard content
+	
+	extraClipboardCopy := clipboard
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := originalClipboard
+	}
+	
+	Return
+}
+
+
+
+extraPaste() ; paste the extra clipboard
+{
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := extraClipboardCopy
+	}
+	
+	Send ^v ; paste all text
+	
+	restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
+	If (restore) {
+		Sleep, 150
+		While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+		Sleep, 150
+		Clipboard := originalClipboard
+	}
+	
+	Return
+}
