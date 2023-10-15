@@ -320,24 +320,29 @@ localComments() ; this is the main function
 	ClipWait  ; Wait for the clipboard to contain text.
 	clipboard := ClipboardAll ; Get the clipboard content
 	
-	CleanedString := ""
-	CleanedString := RegExReplace(Clipboard, "^[ \t]+") ; remove both spaces and tabs from the beginning
 	
-	
-	isAComment := False
-	FirstTwoChars := SubStr(CleanedString, 1, 2)
-	if (FirstTwoChars = "//")
-	{
-		isAComment := True
-	}
-	else
-	{
-		isAComment := False
-	}
-	
+	addCommentMode := False
 	
 	; Set the delimiter for splitting lines
 	LineDelimiter := "`n" ; Use `r`n for Windows line endings
+	
+	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
+	
+	containsUncommentedCode := False
+	for index, line in Lines ; Loop through each line
+	{
+		CleanedString := ""
+		CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
+		CleanedString := StrReplace(CleanedString, "`r`n`t ") ; remove carriage return, newline char, tabs and spaces
+		CleanedString := RegExReplace(CleanedString, "[\x00-\x1F\x7F-\xFF]") ; remove non printable characters
+		
+		FirstTwoChars := SubStr(CleanedString, 1, 2)
+		if(FirstTwoChars != "//" && StrLen(CleanedString) > 0){
+			containsUncommentedCode := True
+		}
+	}
+	
+	
 	
 	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
 	
@@ -365,13 +370,15 @@ localComments() ; this is the main function
 		; Get substring after whitespace 
 		; content := SubStr(line, origLen-newLen+1) ; not needed as we already have cleaned string
 		
-		FirstTwoChars := SubStr(CleanedString, 1, 2)
 		; Insert slashes at the beginning of the string
-		if(isAComment && FirstTwoChars = "//"){
-			CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
+		if(containsUncommentedCode){
+			if (RegExMatch(CleanedString, "[^ \t\n\r]")) {
+				CleanedString := "//" . CleanedString
+				; MsgBox, The string contains characters other than spaces or tabs.
+			}
 		}
 		else{
-			CleanedString := "//" . CleanedString
+			CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
 		}
 		
 
