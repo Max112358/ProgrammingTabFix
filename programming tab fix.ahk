@@ -79,7 +79,7 @@ determineLanguage() ; this figures out what language its looking at
 	
 	if(BraceCount > 0){ ; if there are any braces at all its probably not python
 		fixTabs()
-		}else{
+	}else{
 		fixPython()
 	}
 	
@@ -118,7 +118,7 @@ fixTabs() ; this is the main function
 		
 		localCount := 0
 		isComment := multiLineComment
-		
+		isQuote := false
 		
 		CleanedString := ""
 		CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
@@ -127,43 +127,52 @@ fixTabs() ; this is the main function
 		
 		Loop, Parse, CleanedString ; Loop through the characters in the current CleanedString element
 		{
-			nextTwoChars := SubStr(CleanedString, A_Index, 2)
-			nextChar := SubStr(CleanedString, A_Index, 1)
+			firstTwoChars := SubStr(CleanedString, A_Index, 2)
+			firstChar := SubStr(CleanedString, A_Index, 1)
 			; MsgBox %c%
 			
-			if (nextTwoChars = "//") {
-			; Check if the previous character is also '/' to prevent comments from causing issues
-			isComment := true
-		}
-		
-		if (nextTwoChars = "/*") {
-		; Check for multi-line comment start
-		multiLineComment := true
-		isComment := true
-		
-		}
-		
-		if (nextTwoChars = "*/") {
-			; Check for multi-line comment end
-			multiLineComment := false
-			isComment := false
-		}
-		
-		if (nextChar = "}" && !isComment) {
-			localCount--
-		}
-	
-		if (nextChar = "{" && !isComment) {
+			doubleQuote := """"
+			singleQuote := SubStr(doubleQuote, 1, 1)
+			
+			if (firstChar == singleQuote && !isQuote) {
+				isQuote := true
+			}else if(firstChar == singleQuote && isQuote){
+				isQuote := false
+			}
+			
+			
+			if (firstTwoChars = "//" && !isQuote) {
+				; Check if the previous character is also '/' to prevent comments from causing issues
+				isComment := true
+			}
+			
+			if (firstTwoChars = "/*" && !isQuote) {
+				; Check for multi-line comment start
+				multiLineComment := true
+				isComment := true
+			}
+			
+			if (firstTwoChars = "*/" && !isQuote) {
+				; Check for multi-line comment end
+				multiLineComment := false
+				isComment := false
+			}
+			
+			if (firstChar = "}" && !isComment && !isQuote) {
+				localCount--
+			}
+			
+			if (firstChar = "{" && !isComment && !isQuote) {
 				localCount++
+			}
 		}
-	}
-	
-	
-	
-	
-	
-	specialCase := false ; Initialize specialCase as false
-
+		
+		
+		
+		
+		
+		specialCase := false ; Initialize specialCase as false
+		
 	; Check if the first character in inputVector[i] is '}' and handle the special case
 	firstChar := SubStr(CleanedString, 1, 1 && localCount == 0)
 	if (firstChar = "}") {
@@ -398,8 +407,8 @@ for index, line in Lines ; Loop through each line
 	
 	FirstTwoChars := SubStr(CleanedString, 1, 2)
 	if(FirstTwoChars != "//" && StrLen(CleanedString) > 0){
-	containsUncommentedCode := True
-}
+		containsUncommentedCode := True
+	}
 }
 
 
@@ -409,54 +418,54 @@ Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into l
 currentLine := 1
 for index, line in Lines ; Loop through each line
 {
-
-
-CleanedString := ""
-CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
-; MsgBox %CleanedString%
-
-; Get the length of the original line
-origLen := StrLen(line)
-
-; Get the length after trimming whitespace
-newLen := StrLen(CleanedString)
-
-; Calculate the whitespace chars trimmed
-whitespaceCount := origLen - newLen
-
-; Get substring from 0 to last whitespace char 
-leadingWS := SubStr(line, 1, origLen-newLen)
-
-; Get substring after whitespace 
-; content := SubStr(line, origLen-newLen+1) ; not needed as we already have cleaned string
-
-; Insert slashes at the beginning of the string
-if(containsUncommentedCode){
-	if (RegExMatch(CleanedString, "[^ \t\n\r]")) {
-		CleanedString := "//" . CleanedString
-		; MsgBox, The string contains characters other than spaces or tabs.
+	
+	
+	CleanedString := ""
+	CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
+	; MsgBox %CleanedString%
+	
+	; Get the length of the original line
+	origLen := StrLen(line)
+	
+	; Get the length after trimming whitespace
+	newLen := StrLen(CleanedString)
+	
+	; Calculate the whitespace chars trimmed
+	whitespaceCount := origLen - newLen
+	
+	; Get substring from 0 to last whitespace char 
+	leadingWS := SubStr(line, 1, origLen-newLen)
+	
+	; Get substring after whitespace 
+	; content := SubStr(line, origLen-newLen+1) ; not needed as we already have cleaned string
+	
+	; Insert slashes at the beginning of the string
+	if(containsUncommentedCode){
+		if (RegExMatch(CleanedString, "[^ \t\n\r]")) {
+			CleanedString := "//" . CleanedString
+			; MsgBox, The string contains characters other than spaces or tabs.
+		}
 	}
-}
-else{
-	CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
-}
-
-
-replacementString := leadingWS CleanedString
-
-Lines[currentLine] := replacementString
-
-
-currentLine++
-
-joinedClipboard := ""
-for joinIndex, line in Lines ; Loop through each line
-{
-	joinedClipboard := joinedClipboard . line . "`n"
-}
-; Set the modified content back to the clipboard
-clipboard := joinedClipboard
-
+	else{
+		CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
+	}
+	
+	
+	replacementString := leadingWS CleanedString
+	
+	Lines[currentLine] := replacementString
+	
+	
+	currentLine++
+	
+	joinedClipboard := ""
+	for joinIndex, line in Lines ; Loop through each line
+	{
+		joinedClipboard := joinedClipboard . line . "`n"
+	}
+	; Set the modified content back to the clipboard
+	clipboard := joinedClipboard
+	
 } ; end of loop
 
 
@@ -466,10 +475,10 @@ Send ^v ; paste from clipboard
 
 restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
 If (restore) {
-Sleep, 150
-While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-Sleep, 150
-Clipboard := originalClipboard
+	Sleep, 150
+	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+	Sleep, 150
+	Clipboard := originalClipboard
 }
 
 Return
@@ -491,10 +500,10 @@ extraClipboardCopy := clipboard
 
 restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
 If (restore) {
-Sleep, 150
-While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-Sleep, 150
-Clipboard := originalClipboard
+	Sleep, 150
+	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+	Sleep, 150
+	Clipboard := originalClipboard
 }
 
 Return
@@ -510,20 +519,20 @@ clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has
 
 restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
 If (restore) {
-Sleep, 150
-While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-Sleep, 150
-Clipboard := extraClipboardCopy
+	Sleep, 150
+	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+	Sleep, 150
+	Clipboard := extraClipboardCopy
 }
 
 Send ^v ; paste all text
 
 restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
 If (restore) {
-Sleep, 150
-While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-Sleep, 150
-Clipboard := originalClipboard
+	Sleep, 150
+	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
+	Sleep, 150
+	Clipboard := originalClipboard
 }
 
 Return
