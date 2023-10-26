@@ -108,7 +108,7 @@ fixTabs() ; this is the main function
 	LineDelimiter := "`n" ; Use `r`n for Windows line endings
 	TabCharacter := "`t" ; set the character for indentation
 	tabCount := 0
-	multiLineComment := False
+	multiLineComment := false
 	
 	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
 	
@@ -160,6 +160,19 @@ fixTabs() ; this is the main function
 	
 	
 	
+	
+	
+	specialCase := false ; Initialize specialCase as false
+
+	; Check if the first character in inputVector[i] is '}' and handle the special case
+	firstChar := SubStr(CleanedString, 1, 1 && localCount == 0)
+	if (firstChar = "}") {
+		tabCount-- ; Decrement tabCount
+		specialCase := true ; Set specialCase to true
+	}
+	
+	
+	
 	; Adjust tabCount only if it has gone backward
 	if (localCount < 0) {
 		tabCount += localCount
@@ -185,6 +198,11 @@ fixTabs() ; this is the main function
 	
 	
 	Lines[currentLine] := replacementString
+	
+	; undo the special case
+	if (firstChar = "}") {
+		tabCount++ ; Decrement tabCount
+	}
 	
 	
 	; Adjust tabCount only if it has gone forward, AFTER tabbing the line. This is for the next line.
