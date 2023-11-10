@@ -46,9 +46,9 @@ determineLanguage() ; this figures out what language its looking at
 	originalClipboard := clipboard
 	Click ; click to put focus on the text
 	Send ^a ; select all
-	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	clipboard := ""  ; Start off empty to allow ClipWait, 1 to detect when the text has arrived.
 	Send ^c ; cut all text
-	ClipWait  ; Wait for the clipboard to contain text.
+	ClipWait, 1  ; Wait for the clipboard to contain text.
 	clipboard := ClipboardAll ; Get the clipboard content
 	
 	
@@ -327,7 +327,7 @@ localComments() ; this is the main function
 	originalClipboard := clipboard
 	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
 	Send ^c ; cut all text
-	ClipWait  ; Wait for the clipboard to contain text.
+	ClipWait, 1  ; Wait for the clipboard to contain text.
 	clipboard := ClipboardAll ; Get the clipboard content
 	
 	
@@ -416,7 +416,7 @@ extraCopy() ; store an extra clipboard
 	originalClipboard := clipboard
 	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
 	Send ^c ; cut all text
-	ClipWait  ; Wait for the clipboard to contain text.
+	ClipWait, 1  ; Wait for the clipboard to contain text.
 	clipboard := ClipboardAll ; Get the clipboard content
 	
 	extraClipboardCopy := clipboard
@@ -444,12 +444,12 @@ extraPaste() ; paste the extra clipboard
 
 replaceClipboard(clipboardToRestore) ; swap the clipboard to something else. This involves some waiting.
 {
-	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	clipboard := ""  ; Start off empty to allow ClipWait, 1 to detect when the text has arrived.
 	clipboard := clipboardToRestore
 	
 	; just in case the clipboard was originally empty, dont wait in that case
 	if(clipboardToRestore != ""){ 
-		ClipWait  ; Wait for the clipboard to contain text.
+		ClipWait, 1  ; Wait for the clipboard to contain text.
 	}
 	
 	Return
