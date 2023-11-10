@@ -22,27 +22,18 @@ SetCapsLockState, AlwaysOff ; I also dont use caps lock ever
 determineLanguage()
 Return
 
-#g::  ;windows+g to apply or remove comments
+#d::  ;windows+d to apply or remove comments
 localComments()
 Return
 
-#l::  ;windows+l to fix c based language
-fixTabs()
-Return
-
-#p::  ;windows+p to fix python
-fixPython()
-Return
-
-#c::  ;windows+c to copy something extra
+#c::  ;windows+c or windows+x to copy something extra
+#x::  ;
 extraCopy()
 Return
 
 #v::  ;windows+v to paste something extra
 extraPaste()
 Return
-
-
 
 
 Return
@@ -53,7 +44,7 @@ determineLanguage() ; this figures out what language its looking at
 {
 	
 	originalClipboard := clipboard
-	Click ; click the item button to open the trade page
+	Click ; click to put focus on the text
 	Send ^a ; select all
 	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
 	Send ^c ; cut all text
@@ -90,16 +81,6 @@ determineLanguage() ; this figures out what language its looking at
 
 
 
-
-
-
-
-
-
-
-
-
-
 fixTabs() ; this is the main function
 {
 	
@@ -111,8 +92,8 @@ fixTabs() ; this is the main function
 	multiLineComment := false
 	
 	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
+	JoinedClipboard := ""
 	
-	currentLine := 1
 	for index, line in Lines ; Loop through each line
 	{
 		
@@ -152,6 +133,7 @@ fixTabs() ; this is the main function
 				isComment := true
 			}
 			
+			
 			if (firstTwoChars = "*/" && !isQuote) {
 				; Check for multi-line comment end
 				multiLineComment := false
@@ -173,88 +155,64 @@ fixTabs() ; this is the main function
 		
 		specialCase := false ; Initialize specialCase as false
 		
-	; Check if the first character in inputVector[i] is '}' and handle the special case
-	firstChar := SubStr(CleanedString, 1, 1 && localCount == 0)
-	if (firstChar = "}") {
-		tabCount-- ; Decrement tabCount
-		specialCase := true ; Set specialCase to true
-	}
+		; Check if the first character in inputVector[i] is '}' and handle the special case
+		firstChar := SubStr(CleanedString, 1, 1 && localCount == 0)
+		if (firstChar = "}") {
+			tabCount-- ; Decrement tabCount
+			specialCase := true ; Set specialCase to true
+		}
+		
+		
+		
+		; Adjust tabCount only if it has gone backward
+		if (localCount < 0) {
+			tabCount += localCount
+		}
+		
+		
+		
+		
+		; Initialize an empty string
+		replacementString := ""
+		
+		; Insert tabs at the beginning of the string
+		Loop % tabCount
+		{
+			replacementString := replacementString . TabCharacter
+		}
+		
+		; Append the rest of the string
+		replacementString := replacementString CleanedString
+		
+		; Display the resulting string
+		; MsgBox %replacementString%
+		
+		; undo the special case
+		if (firstChar = "}") {
+			tabCount++ ; Decrement tabCount
+		}
+		
+		
+		; Adjust tabCount only if it has gone forward, AFTER tabbing the line. This is for the next line.
+		if (localCount > 0) {
+			tabCount += localCount
+		}
+		
+		JoinedClipboard := JoinedClipboard . replacementString . "`n" ; join the lines back together
+		
+		
+	} ; end of loop
 	
+	JoinedClipboard := SubStr(JoinedClipboard, 1, -1) ; Remove the trailing newline character
+	replaceClipboard(JoinedClipboard) ; put the modified code in the clipboard
 	
+	Send ^v ; paste from clipboard
+	Sleep, 50 ; wait for paste to finish
 	
-	; Adjust tabCount only if it has gone backward
-	if (localCount < 0) {
-		tabCount += localCount
-	}
+	replaceClipboard(originalClipboard) ; put the original in the clipboard
 	
-	
-	
-	
-	; Initialize an empty string
-	replacementString := ""
-	
-	; Insert tabs at the beginning of the string
-	Loop % tabCount
-	{
-		replacementString := replacementString . TabCharacter
-	}
-	
-	; Append the rest of the string
-	replacementString := replacementString CleanedString
-	
-	; Display the resulting string
-	; MsgBox %replacementString%
-	
-	
-	Lines[currentLine] := replacementString
-	
-	; undo the special case
-	if (firstChar = "}") {
-		tabCount++ ; Decrement tabCount
-	}
-	
-	
-	; Adjust tabCount only if it has gone forward, AFTER tabbing the line. This is for the next line.
-	if (localCount > 0) {
-		tabCount += localCount
-	}
-	
-	
-	
-	
-	
-	; this section is for joining the lines back together
-	currentLine++
-	
-	joinedClipboard := ""
-	for joinIndex, line in Lines ; Loop through each line
-	{
-		joinedClipboard := joinedClipboard . line . "`n"
-	}
-	; Set the modified content back to the clipboard
-	clipboard := joinedClipboard
-	
-} ; end of loop
-
-
-Clipboard := SubStr(Clipboard, 1, -1) ; Remove the trailing newline character
-
-Send ^v ; paste from clipboard
-
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := originalClipboard
+	Return
 }
-
-Return
-}
-
-
-
-
 
 
 
@@ -265,113 +223,96 @@ Return
 
 fixPython() ; this is the main function
 {
-
-; Set the delimiter for splitting lines
-LineDelimiter := "`n" ; Use `r`n for Windows line endings
-
-Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
-
-currentLine := 1
-for index, line in Lines ; Loop through each line
-{
 	
-	; Initialize a variable to count spaces
-	SpaceCount := 0
+	; Set the delimiter for splitting lines
+	LineDelimiter := "`n" ; Use `r`n for Windows line endings
 	
-	; Loop through the string
-	Loop, Parse, line
+	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
+	JoinedClipboard := ""
+	
+	for index, line in Lines ; Loop through each line
 	{
-		; Check if the current character is a space
-		if (A_LoopField = " ")
+		
+		; Initialize a variable to count spaces
+		SpaceCount := 0
+		
+		; Loop through the string
+		Loop, Parse, line
 		{
-			; Increment the space count
-			SpaceCount++
+			; Check if the current character is a space
+			if (A_LoopField = " ")
+			{
+				; Increment the space count
+				SpaceCount++
+			}
+			else
+			{
+				; If a non-space character is encountered, stop the loop
+				break
+			}
 		}
-		else
+		
+		
+		
+		; Initialize a variable to count tabs
+		tabCount := 0
+		
+		; Loop through the string
+		Loop, Parse, line
 		{
-			; If a non-space character is encountered, stop the loop
-			break
+			; Check if the current character is a space
+			if (A_LoopField = "`t")
+			{
+				; Increment the space count
+				tabCount++
+			}
+			else
+			{
+				; If a non-space character is encountered, stop the loop
+				break
+			}
 		}
-	}
-	
-	
-	
-	; Initialize a variable to count tabs
-	tabCount := 0
-	
-	; Loop through the string
-	Loop, Parse, line
-	{
-		; Check if the current character is a space
-		if (A_LoopField = "`t")
+		
+		
+		if(SpaceCount > 0){
+			tabCount := SpaceCount / 4
+		}
+		
+		
+		CleanedString := ""
+		CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
+		
+		
+		; Initialize an empty string
+		replacementString := ""
+		
+		; Insert tabs at the beginning of the string
+		Loop % tabCount
 		{
-			; Increment the space count
-			tabCount++
+			replacementString := replacementString . "`t"
 		}
-		else
-		{
-			; If a non-space character is encountered, stop the loop
-			break
-		}
-	}
+		
+		; Append the rest of the string
+		replacementString := replacementString CleanedString
+		
+		; Display the resulting string
+		; MsgBox %replacementString%
+		
+		
+		JoinedClipboard := JoinedClipboard . replacementString . "`n" ; join the lines back together
+		
+		
+	} ; end of loop
 	
+	JoinedClipboard := SubStr(JoinedClipboard, 1, -1) ; Remove the trailing newline character
+	replaceClipboard(JoinedClipboard) ; put the modified code in the clipboard
 	
-	if(SpaceCount > 0){
-		tabCount := SpaceCount / 4
-	}
+	Send ^v ; paste from clipboard
+	Sleep, 50 ; wait for paste to finish
 	
+	replaceClipboard(originalClipboard) ; put the original in the clipboard
 	
-	CleanedString := ""
-	CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
-	
-	
-	; Initialize an empty string
-	replacementString := ""
-	
-	; Insert tabs at the beginning of the string
-	Loop % tabCount
-	{
-		replacementString := replacementString . "`t"
-	}
-	
-	; Append the rest of the string
-	replacementString := replacementString CleanedString
-	
-	; Display the resulting string
-	; MsgBox %replacementString%
-	
-	
-	Lines[currentLine] := replacementString
-	
-	
-	
-	
-	currentLine++
-	
-	joinedClipboard := ""
-	for joinIndex, line in Lines ; Loop through each line
-	{
-		joinedClipboard := joinedClipboard . line . "`n"
-	}
-	; Set the modified content back to the clipboard
-	clipboard := joinedClipboard
-	
-} ; end of loop
-
-
-Clipboard := SubStr(Clipboard, 1, -1) ; Remove the trailing newline character
-
-Send ^v ; paste from clipboard
-
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := originalClipboard
-}
-
-Return
+	Return
 }
 
 
@@ -382,160 +323,136 @@ Return
 
 localComments() ; this is the main function
 {
-
-originalClipboard := clipboard
-clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
-Send ^c ; cut all text
-ClipWait  ; Wait for the clipboard to contain text.
-clipboard := ClipboardAll ; Get the clipboard content
-
-
-addCommentMode := False
-
-; Set the delimiter for splitting lines
-LineDelimiter := "`n" ; Use `r`n for Windows line endings
-
-Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
-
-containsUncommentedCode := False
-for index, line in Lines ; Loop through each line
-{
-	CleanedString := ""
-	CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
-	CleanedString := StrReplace(CleanedString, "`r`n`t ") ; remove carriage return, newline char, tabs and spaces
-	CleanedString := RegExReplace(CleanedString, "[\x00-\x1F\x7F-\xFF]") ; remove non printable characters
 	
-	FirstTwoChars := SubStr(CleanedString, 1, 2)
-	if(FirstTwoChars != "//" && StrLen(CleanedString) > 0){
-		containsUncommentedCode := True
-	}
-}
-
-
-
-Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
-
-currentLine := 1
-for index, line in Lines ; Loop through each line
-{
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	Send ^c ; cut all text
+	ClipWait  ; Wait for the clipboard to contain text.
+	clipboard := ClipboardAll ; Get the clipboard content
 	
 	
-	CleanedString := ""
-	CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
-	; MsgBox %CleanedString%
+	addCommentMode := False
 	
-	; Get the length of the original line
-	origLen := StrLen(line)
+	; Set the delimiter for splitting lines
+	LineDelimiter := "`n" ; Use `r`n for Windows line endings
 	
-	; Get the length after trimming whitespace
-	newLen := StrLen(CleanedString)
+	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
+	JoinedClipboard := ""
 	
-	; Calculate the whitespace chars trimmed
-	whitespaceCount := origLen - newLen
-	
-	; Get substring from 0 to last whitespace char 
-	leadingWS := SubStr(line, 1, origLen-newLen)
-	
-	; Get substring after whitespace 
-	; content := SubStr(line, origLen-newLen+1) ; not needed as we already have cleaned string
-	
-	; Insert slashes at the beginning of the string
-	if(containsUncommentedCode){
-		if (RegExMatch(CleanedString, "[^ \t\n\r]")) {
-			CleanedString := "//" . CleanedString
-			; MsgBox, The string contains characters other than spaces or tabs.
+	containsUncommentedCode := False
+	for index, line in Lines ; Loop through each line
+	{
+		CleanedString := ""
+		CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
+		CleanedString := StrReplace(CleanedString, "`r`n`t ") ; remove carriage return, newline char, tabs and spaces
+		CleanedString := RegExReplace(CleanedString, "[\x00-\x1F\x7F-\xFF]") ; remove non printable characters
+		
+		FirstTwoChars := SubStr(CleanedString, 1, 2)
+		if(FirstTwoChars != "//" && StrLen(CleanedString) > 0){
+			containsUncommentedCode := True
 		}
 	}
-	else{
-		CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
-	}
 	
 	
-	replacementString := leadingWS CleanedString
 	
-	Lines[currentLine] := replacementString
+	Lines := StrSplit(Clipboard, LineDelimiter) ; Split the clipboard content into lines
 	
-	
-	currentLine++
-	
-	joinedClipboard := ""
-	for joinIndex, line in Lines ; Loop through each line
+	for index, line in Lines ; Loop through each line
 	{
-		joinedClipboard := joinedClipboard . line . "`n"
-	}
-	; Set the modified content back to the clipboard
-	clipboard := joinedClipboard
+		
+		
+		CleanedString := ""
+		CleanedString := RegExReplace(line, "^[ \t]+") ; remove both spaces and tabs from the beginning
+		; MsgBox %CleanedString%
+		
+		; Get the length of the original line
+		origLen := StrLen(line)
+		
+		; Get the length after trimming whitespace
+		newLen := StrLen(CleanedString)
+		
+		; Calculate the whitespace chars trimmed
+		whitespaceCount := origLen - newLen
+		
+		; Get substring from 0 to last whitespace char 
+		leadingWS := SubStr(line, 1, origLen-newLen)
+		
+		; Get substring after whitespace 
+		; content := SubStr(line, origLen-newLen+1) ; not needed as we already have cleaned string
+		
+		; Insert slashes at the beginning of the string
+		if(containsUncommentedCode){
+			if (RegExMatch(CleanedString, "[^ \t\n\r]")) {
+				CleanedString := "//" . CleanedString
+				; MsgBox, The string contains characters other than spaces or tabs.
+			}
+		}
+		else{
+			CleanedString := SubStr(CleanedString, 3) ; if it is a removal scenario
+		}
+		
+		
+		replacementString := leadingWS CleanedString
+		
+		JoinedClipboard := JoinedClipboard . replacementString . "`n" ; join the lines back together
+		
+	} ; end of loop
 	
-} ; end of loop
-
-
-Clipboard := SubStr(Clipboard, 1, -1) ; Remove the trailing newline character
-
-Send ^v ; paste from clipboard
-
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := originalClipboard
+	
+	JoinedClipboard := SubStr(JoinedClipboard, 1, -1) ; Remove the trailing newline character
+	replaceClipboard(JoinedClipboard) ; put the modified code in the clipboard
+	
+	Send ^v ; paste from clipboard
+	Sleep, 50 ; wait for paste to finish
+	
+	replaceClipboard(originalClipboard) ; put the original in the clipboard
+	
+	Return
 }
-
-Return
-}
-
-
-
 
 
 extraCopy() ; store an extra clipboard
 {
-originalClipboard := clipboard
-clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
-Send ^c ; cut all text
-ClipWait  ; Wait for the clipboard to contain text.
-clipboard := ClipboardAll ; Get the clipboard content
-
-extraClipboardCopy := clipboard
-
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := originalClipboard
+	originalClipboard := clipboard
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	Send ^c ; cut all text
+	ClipWait  ; Wait for the clipboard to contain text.
+	clipboard := ClipboardAll ; Get the clipboard content
+	
+	extraClipboardCopy := clipboard
+	
+	replaceClipboard(originalClipboard) ; put the original in the clipboard
+	
+	Return
 }
-
-Return
-}
-
 
 
 extraPaste() ; paste the extra clipboard
 {
-originalClipboard := clipboard
-clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
-
-
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := extraClipboardCopy
+	originalClipboard := clipboard
+	
+	replaceClipboard(extraClipboardCopy) ; put the copy in the clipboard
+	
+	Send ^v ; paste all text
+	Sleep, 50 ; wait for paste to finish
+	
+	replaceClipboard(originalClipboard) ; put the original in the clipboard
+	
+	Return
 }
 
-Send ^v ; paste all text
 
-restore := True ; some guy recommended this as the proper way to do clipboard restores, because clipboard pasting is asynchronous
-If (restore) {
-	Sleep, 150
-	While DllCall("user32\GetOpenClipboardWindow", "Ptr")
-	Sleep, 150
-	Clipboard := originalClipboard
-}
-
-Return
+replaceClipboard(clipboardToRestore) ; swap the clipboard to something else. This involves some waiting.
+{
+	clipboard := ""  ; Start off empty to allow ClipWait to detect when the text has arrived.
+	clipboard := clipboardToRestore
+	
+	; just in case the clipboard was originally empty, dont wait in that case
+	if(clipboardToRestore != ""){ 
+		ClipWait  ; Wait for the clipboard to contain text.
+	}
+	
+	Return
 }
 
 
